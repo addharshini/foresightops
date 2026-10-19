@@ -10,3 +10,8 @@ reports/
 *.json
 .venv/
 venv/
+
+foresightops.egg-info/
+reports/
+*.html
+CONFERENCE_SUBMISSION.md
