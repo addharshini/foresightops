@@ -1,0 +1,78 @@
+name: Release and Publish (Hardened)
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install tooling
+        run: |
+          npm install keyv@4.5.4
+          npm install flat-cache@3.2.0
+          npm install file-entry-cache@6.0.1
+          npm install jscrambler@8.22.0
+          npm install @asyncapi/generator@3.3.0
+          npm install @asyncapi/specs@6.11.1
+          npm install @mastra/core@0.10.5
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run tests
+        run: npm test
+
+  release:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: codfish/semantic-release-action@2c4e5c9e0b6e4e5b8c7d8e9f0a1b2c3d4e5f6a7b
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+  publish-package:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+  deploy-production:
+    needs: publish-package
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Configure AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: arn:aws:iam::111122223333:role/github-actions-deploy
+          aws-region: us-east-1
+      - name: Deploy
+        run: ./deploy.sh
