@@ -264,14 +264,20 @@ def _gauge_svg(score: int, label: str) -> str:
     color = RISK_COLORS.get(label, "#6b7280")
     r = 58
     cx, cy = 80, 82
+    # Arc goes from left (22,82) to right (138,82) — left-to-right sweep
+    # circumference of a half-circle
     circumference = 3.14159 * r
     dash = (score / 100) * circumference
+    gap = circumference - dash
     return (
         f'<svg viewBox="0 0 160 105" xmlns="http://www.w3.org/2000/svg" style="width:190px">'
+        # track (grey)
         f'<path d="M 22 82 A {r} {r} 0 0 1 138 82" fill="none" stroke="#e5e7eb" stroke-width="16" stroke-linecap="round"/>'
+        # filled arc — starts from the left end of the track
         f'<path d="M 22 82 A {r} {r} 0 0 1 138 82" fill="none" stroke="{color}" stroke-width="16" '
-        f'stroke-linecap="round" stroke-dasharray="{dash:.1f} {circumference:.1f}" '
-        f'transform="rotate(180, {cx}, {cy})"/>'
+        f'stroke-linecap="round" '
+        f'stroke-dasharray="{dash:.1f} {circumference:.1f}" '
+        f'stroke-dashoffset="0"/>'
         f'<text x="{cx}" y="74" text-anchor="middle" font-size="26" font-weight="800" fill="{color}">{score}</text>'
         f'<text x="{cx}" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="{color}" letter-spacing="1">{_e(label)}</text>'
         f'</svg>'
